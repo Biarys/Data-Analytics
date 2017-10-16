@@ -1,0 +1,98 @@
+"""
+This strategy buys top quintile (~100 stocks) of S&P500 index based on prior 12 month momentum (including last month). The strategy:
+1) Outperforms prior 2008 period
+2) Goes neutral during 2008-2009
+3) Outperforms after, but returns converge towards the end
+
+We can conclude that outperformance in the after crisis period comes from the drawdown limitation during the crisis period.
+"""
+from quantopian.algorithm import attach_pipeline, pipeline_output
+from quantopian.pipeline import Pipeline, CustomFactor
+from quantopian.pipeline.data.builtin import USEquityPricing
+from quantopian.pipeline.filters.morningstar import Q500US
+ 
+def initialize(context):
+    # Rebalance every month at the end.
+    schedule_function(my_rebalance, date_rules.month_end())
+    
+    #Get data for SPY
+    context.spy = sid(8554)
+      
+    # Create our dynamic stock selector.
+    attach_pipeline(make_pipeline(), 'my_pipeline')
+         
+def make_pipeline():
+    
+    base_universe = Q500US()
+    momentum = Momentum()
+    
+    top_mom = momentum.percentile_between(80,100)
+    
+    pos_mom = momentum > 0
+    
+    buy_signal = top_mom & pos_mom
+    
+    return Pipeline(columns={
+        'momentum':momentum,
+        'top_mom':top_mom,
+        'pos_mom':pos_mom,
+        'buy_signal':buy_signal
+    }, screen = base_universe
+                   )
+
+class Momentum(CustomFactor):
+    #Calculate momentum based on prior 252 days (~1 year)    
+    inputs = [USEquityPricing.close]
+    window_length = 252
+    mask = Q500US()
+
+    def compute(self, today, assets, out, close):
+        out[:] = (((close[-1] - close[-252])/close[-252]) * 100)
+
+def spy_price(context, data):
+    price_spy = data.history(context.spy, 'price', 252, '1d')
+    price_spy_monthly = price_spy.resample('M').last()
+    
+    #Calculate momentum on SPY
+    spy_mom = (price_spy_monthly[-1] - price_spy_monthly[-12])/price_spy_monthly[-12]
+    
+    return spy_mom
+     
+def my_assign_weights(context):
+    
+    if len(context.longs)==0:
+        long_weight = 0
+    else:
+        long_weight = 1.0 / len(context.longs)    
+    
+    return long_weight
+
+def my_rebalance(context,data):
+    context.output = pipeline_output('my_pipeline')
+    context.longs = context.output[context.output['buy_signal']].index.tolist()
+    context.long_weight = my_assign_weights(context)
+    #context.top_mom = context.output[context.output['top_mom']].index.tolist()
+    context.spy_mom = spy_price(context, data)
+    
+    
+    for security in context.portfolio.positions:
+        if security not in context.longs and data.can_trade(security):
+            order_target_percent(security,0)
+            
+            
+    for security in context.longs:
+        if (context.spy_mom > 0) and data.can_trade(security):
+            order_target_percent(security,context.long_weight)
+    
+    # #Record number of stocks we hold every month        
+    # stocks_held = 0
+    # for security in context.portfolio.positions:
+    #     stocks_held += 1        
+            
+    # record(num_of_stocks = stocks_held)
+    # record(spy_mom_12 = context.spy_mom)
+        
+        
+        
+        
+        

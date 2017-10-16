@@ -1,0 +1,27 @@
+'''
+This is a simple trend following strategy. It goes long when price of SPY is greater than its trailing 10 month simple moving average. 
+It does well during the financial crisis by exiting the position quickly. 
+Also, the strategy got whipsawed a little bit during 2015-2017 period. 
+Longer whipsaw period might cause the strategy to give all profits back.
+'''
+
+def initialize(context):
+    
+    schedule_function(spy_price, date_rules.month_end())
+    
+    context.spy = sid(8554)
+        
+def spy_price(context, data):
+    price_spy = data.history(context.spy, 'price', 252, '1d')
+    price_spy_monthly = price_spy.resample('M').last()
+    
+    #Calculate 10 month SMA on SPY
+    spy_ma_10 = price_spy_monthly.rolling(10).mean()
+    
+    if price_spy_monthly[-1] > spy_ma_10[-1]:
+        order_target_percent(context.spy, 1.0)
+        
+    elif price_spy_monthly[-1] < spy_ma_10[-1]:
+        order_target_percent(context.spy, 0)
+    
+       
