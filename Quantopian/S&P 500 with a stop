@@ -1,5 +1,6 @@
 '''
-This is a simple trend following strategy. It goes long when price of SPY is greater than its trailing 10 month simple moving average. 
+This is a simple trend following strategy. It goes long when price of SPY is greater than its trailing 10 month simple moving average.
+Returns are identical to S&P 500, but the drawdown is only -17.34% (compared to -60% of S&P 500), which results in Sharpe ratio of 0.83.
 It does well during the financial crisis by exiting the position quickly. 
 Also, the strategy got whipsawed a little bit during 2015-2017 period. 
 Longer whipsaw period might cause the strategy to give all profits back.
