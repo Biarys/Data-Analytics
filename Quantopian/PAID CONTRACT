@@ -1,0 +1,232 @@
+"""
+PAID CONTRACT. This strategy was created for a client. Permission was given to post this on my GitHub.
+"""
+from quantopian.algorithm import attach_pipeline, pipeline_output
+from quantopian.pipeline import Pipeline, CustomFactor
+from quantopian.pipeline.data.builtin import USEquityPricing
+from quantopian.pipeline.factors import AverageDollarVolume
+from quantopian.pipeline.filters.morningstar import Q1500US
+import talib
+
+def initialize(context):
+    """
+    Called once at the start of the algorithm.
+    """   
+    # Close all positions 5 min before market close
+    schedule_function(close_all, date_rules.every_day(), time_rules.market_close(minutes = 5))
+    context.spy = sid(8554) 
+    context.atr = 0
+
+def close_all(context, data):
+    """
+    Function to close all positions.
+    """
+    for stock in context.portfolio.positions:  
+        order_target_percent(stock, 0) 
+                     
+def indec_candle_check(context, data):
+    """
+    Function to find indecision candles.
+    """
+    candle_o = data.current(context.spy, 'open')
+    candle_h = data.current(context.spy, 'high')
+    candle_l = data.current(context.spy, 'low')
+    candle_c = data.current(context.spy, 'close')
+    
+    context.indec_candle_bool = False
+    context.indec_candle_c = 0
+    context.indec_candle_h = 0
+    context.indec_candle_l = 0
+    
+    
+    high_low_diff = abs(candle_h - candle_l)
+    close_open_diff = abs(candle_c - candle_o)
+    body_size = close_open_diff/high_low_diff
+    if body_size <= 0.33:
+        context.indec_candle_bool = True
+        context.indec_candle_c = candle_c
+        context.indec_candle_h = candle_h
+        context.indec_candle_l = candle_l
+        
+        # Contains list of all indecision candle highs
+        context.indec_candle_highs.append(context.indec_candle_h)
+        
+        # Contains list of all indecision candle lows
+        context.indec_candle_lows.append(context.indec_candle_l)
+        
+        
+def before_trading_start(context, data):
+    """
+    Called every day before market open.
+    """
+    context.retr = False			# Set retracement to False because of new day
+    context.highest_high = 0		# Needed for trailing stop
+    context.lowest_low = 99999		# Needed for trailing stop
+    context.entered_long = False
+    context.entered_short = False
+    context.indec_candle_highs = []
+    context.indec_candle_lows = []
+    context.in_position = False		# Check if we are in position to avoid extra signals
+    context.first_trade = True		# Has to be first trade
+    context.break_range = False		# If retraced and went out of range, no trade
+    
+def trailing_stop(context, data):
+    """
+    Function to calculate trailing stops.
+    """
+    price_high = data.current(context.spy, 'high')
+    price_low = data.current(context.spy, 'low')
+    
+    # Finding highest high
+    if (context.entered_long == True) & (price_high > context.highest_high):
+        context.highest_high = price_high
+        #print(context.highest_high)
+        # Trailing stop for long positions
+        context.stop_price = max(context.entry_price - 2 * context.atr, context.highest_high - 2 * context.atr)
+        
+    # Finding lowest low
+    elif (context.entered_short == True) & (price_low < context.lowest_low):
+        context.lowest_low = price_low
+        # Trailing stop for short positions
+        context.stop_price = min(context.entry_price + 2 * context.atr, context.lowest_low + 2 * context.atr)
+    
+ 
+def handle_data(context,data):
+    """
+    Called every minute.
+    """
+    todays_open = data.history(context.spy, 'open', 1, '1d')
+    yest_close = data.history(context.spy, 'close', 2, '1d')
+    current_price = data.current(context.spy, 'price')
+    
+    gap_diff = 0
+    gap_up = 0
+    gap_down = 0
+    
+    # Check if there's a gap
+    if float(todays_open) != float(yest_close[-2]):
+        gap_diff = float(todays_open) - float(yest_close[-2])
+        if gap_diff > 0:
+            gap_up = gap_diff
+            #print('gap up')
+        elif gap_diff < 0:
+            gap_down = gap_diff
+            #print('gap down')
+    
+    
+    # Load historical data for the stocks  
+    atr_hist = data.history(context.spy, ['high', 'low', 'close'], 30, '1m')
+    
+    # Calculate the ATR for the stock  
+    context.atr = talib.ATR(atr_hist['high'], atr_hist['low'], atr_hist['close'], timeperiod=14)[-1]
+    #print(context.atr)
+    
+    # Check if closed the gap    
+    if gap_up != 0 and current_price <= float(yest_close[-2]):
+        context.retr = True
+        #print('retraced from up')
+        
+    if gap_down != 0 and current_price >= float(yest_close[-2]):
+        context.retr = True
+        #print('retraced from down')
+    
+    # Calculate range
+    upper_bound = yest_close[-2] + 2 * context.atr
+    lower_bound = yest_close[-2] - 2 * context.atr
+
+    
+    context.entry_price = 0 
+    
+    if context.retr == True:
+        if (current_price > upper_bound) | (current_price < lower_bound):
+            context.break_range == True
+    
+    # The following logic is:
+    # # IF retraced AND current price is within yesterday's close +/- 2 * ATR(14) AND it is the first trade for the day AND the range has not been broken:
+    # 	# IF gapped up AND indecision candle was formed:
+    #		# Entry price is equal indecision candle's high. IF new candle was formed and new high is lower than previous high, entry price is equal the lower high
+    #		# IF current price goes below 2 * ATR from entry price (candle's high):
+    #			# Range is broken
+    #       # IF current price is more than or equal to entry price AND there's no position:
+    #			# Go long. Reassign values
+    #	# ELSE IF gapped down indecision candle was formed:
+    #		# Entry price is equal indecision candle's low. IF new candle was formed and new low is higher than previous low, entry price is equal the higher low
+    #		# IF current price goes above 2 * ATR from entry price (candle's low):
+    #            # Range is broken
+    #       # IF current price is less than or equal to entry price AND there's no position:
+    #            # Go short. Reassign values
+    
+    if (context.retr == True) & (current_price <= float(upper_bound)) & (current_price >= float(lower_bound)) & (context.first_trade == True) & (context.break_range == False):
+        indec_candle_check(context, data)
+    
+        if (gap_up != 0) & (context.indec_candle_bool == True):            
+            #print(context.entry_price)
+            if len(context.indec_candle_highs) == 1:
+            	context.entry_price = context.indec_candle_h
+               
+            elif context.indec_candle_highs[-1] < context.indec_candle_highs[-2]:
+                context.entry_price = context.indec_candle_highs[-1]
+            
+            if current_price < (context.entry_price - 2 * context.atr):
+                context.break_range = True
+                #print("was here up")
+            
+            if (current_price >= context.entry_price) & (context.in_position == False):
+                order_target_percent(context.spy, 1)
+                context.entered_long = True
+                context.in_position = True
+                context.first_trade = False
+                print("entered from gap up")
+                
+        elif (gap_down != 0) & (context.indec_candle_bool == True):            
+            
+            if len(context.indec_candle_lows) == 1:
+                context.entry_price = context.indec_candle_l
+                
+            elif context.indec_candle_lows[-1] < context.indec_candle_lows[-2]:
+                context.entry_price = context.indec_candle_lows[-1]
+                
+            if current_price > (context.entry_price + 2 * context.atr):
+                context.break_range = True
+                #print("was here down")
+            
+            if (current_price <= context.entry_price) & (context.in_position == False):
+                order_target_percent(context.spy, -1)
+                context.entered_short = True
+                context.in_position = True
+                context.first_trade = False
+                print("entered from gap down")
+            
+    # #IF there are open orders:
+    # 	# THEN set trailing stop:
+    #     	# IF long AND current_price < stop_price:
+    #         	# Exit long position
+    #       # IF short AND current_price > stop_price:
+    #         	# Exit short position
+    
+    if context.in_position == True:
+        trailing_stop(context, data)
+        #print("got here")
+    	if (context.entered_long == True) & (current_price <= context.stop_price):
+            
+            order_target_percent(context.spy, 0)
+            context.entered_long = False
+            context.highest_high = 0			# Reset highs
+            context.indec_candle_highs = []		# Empty list
+            context.in_position = False
+            print("exitted long")
+            
+       	elif (context.entered_short == True) & (current_price >= context.stop_price):
+            
+            order_target_percent(context.spy, 0)
+            context.entered_short = False
+            context.lowest_low = 99999			# Reset lows
+            context.indec_candle_lows = []		# Empty list
+            context.in_position = False
+            print("exitted short")
+    
+    
+    
+    
+    
+    
