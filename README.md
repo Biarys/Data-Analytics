@@ -1,7 +1,7 @@
 # Research 
 This repository contains stock market related research I have done including algo strategies, visualization, etc... in Python and AFL (Amibroker platform)
 ## Content
-#### Amibroker - contains strategies and research done in Amibroker platform:
+#### Amibroker - contains strategies and research using Amibroker platform:
 - Trend following strategy yielding 17 percent: shows all steps taken to come up with the strategy
 #### Online Courses - containts projects I have done through various online courses:
 - ARIMA with statsmodel: data analysis using ARIMA
