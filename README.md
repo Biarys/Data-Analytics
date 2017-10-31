@@ -7,6 +7,7 @@ This repository contains stock market related research I have done including alg
 - ARIMA with statsmodel: data analysis using ARIMA
 - Portfolio Optimization: and efficient frontier
 - Stock market analysis project: final capstone project for one of the courses
+- S&P 500 correlaton map: shows how to get tickers, data, and create a correlation map for stocks in S&P 500 index
 #### Other - other research I have done:
 - Books I have read
 - List of research papers to read
