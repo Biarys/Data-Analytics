@@ -12,6 +12,7 @@ This repository contains stock market related research I have done including alg
 - Books I have read
 - List of research papers to read
 - What works in trading: summary of various research papers I have read
+- Option Strategies: summary of various option strategies presented in a table
 #### Quantopian - strategies and research I have done using Quantopian platform:
 - CustomFactors: a template for CustomFactors on Quantopian
 - Mom S&P 500: buys top quintile of stocks in S&P 500 index
