@@ -19,5 +19,7 @@ This repository contains stock market related research I have done including alg
 - Mom S&P 500 with SPY Mom stop: top quintile of stocks in S&P 500 index, but goes flat when SPY is below its 10 month MA
 - PAID CONTRACT: translated client's strategy into Python on Quantopian
 - S&P 500 with a stop: a simple strategy that buys SPY when its above 10 month MA, goes flat when below 10 month MA
+#### Research - about various financial topics:
+- Correlation of best performing stocks 2017: compared top 25 performing stocks in S&P500 to S&P500
 #### Visualization - various visualization in Python:
 - Visualization with Pandas, Matplotlib.pyplot, and Seaborn
