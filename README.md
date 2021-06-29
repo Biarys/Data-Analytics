@@ -3,11 +3,6 @@ This repository contains stock market related research I have done including alg
 ## Content
 #### Amibroker - contains strategies and research using Amibroker platform:
 - Trend following strategy yielding 17 percent: shows all steps taken to come up with the strategy
-#### Online Courses - containts projects I have done through various online courses:
-- ARIMA with statsmodel: data analysis using ARIMA
-- Portfolio Optimization: and efficient frontier
-- Stock market analysis project: final capstone project for one of the courses
-- S&P 500 correlaton map: shows how to get tickers, data, and create a correlation map for stocks in S&P 500 index
 #### Other - other research I have done:
 - Books I have read
 - List of research papers to read
@@ -21,5 +16,9 @@ This repository contains stock market related research I have done including alg
 - S&P 500 with a stop: a simple strategy that buys SPY when its above 10 month MA, goes flat when below 10 month MA
 #### Research - about various financial topics:
 - Correlation of best performing stocks 2017: compared top 25 performing stocks in S&P500 to S&P500
+- ARIMA with statsmodel: data analysis using ARIMA
+- Portfolio Optimization: and efficient frontier
+- Stock market analysis project: final capstone project for one of the courses
+- S&P 500 correlaton map: shows how to get tickers, data, and create a correlation map for stocks in S&P 500 index
 #### Visualization - various visualization in Python:
 - Visualization with Pandas, Matplotlib.pyplot, and Seaborn
